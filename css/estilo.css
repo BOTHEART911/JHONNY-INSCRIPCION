@@ -176,3 +176,14 @@ textarea.input { resize: vertical; min-height: 96px; }
 .fechabtn svg { width: 20px; height: 20px; color: var(--brand); flex: 0 0 auto; }
 @media (max-width: 360px) { .top-btn span { display: none; } }
 .comp .chip { align-self: center; }
+
+/* 11/11/2026 · «¿Vives en …?» y residencia con buscador */
+.ops.sino { flex-direction: row; }
+.ops.sino .op { flex: 1 1 0; justify-content: center; font-weight: 700; }
+.campo[hidden] { display: none !important; }
+.combo { position: relative; }
+.combo-l { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; max-height: 260px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh-2); }
+.combo-l li { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; }
+.combo-l li.act, .combo-l li[data-i]:hover { background: var(--brand-050); color: var(--brand-700); }
+html[data-theme="dark"] .combo-l li.act, :root:not([data-theme="light"]) .combo-l li.act { color: var(--brand); }
+.combo-l li.nada { color: var(--muted); cursor: default; font-size: 13.5px; }

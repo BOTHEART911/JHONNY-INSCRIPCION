@@ -16,6 +16,10 @@
  *   · Inscribirse: botón ocupado + escudo desde el primer toque y un rid que
  *     se conserva mientras la respuesta no llegue (un reintento nunca duplica).
  *   · Nada de datos personales en Firebase ni en la dirección.
+ *   · 11/11/2026: «¿Vives en <municipio>?» Sí/No (obligatorio) antes de la
+ *     residencia, solo si la definición trae vf (bandera del CORE: web y CORE
+ *     se suben en cualquier orden). Con No se salta la residencia. La
+ *     residencia se busca escribiendo (sin tildes, en el teléfono, sin viajes).
  * ============================================================================ */
 (function () {
   'use strict';
@@ -215,7 +219,6 @@
     document.title = d.nombre + ' · Inscripciones';
     F = { def: d, archivos: {}, subiendo: {}, rid: null, enviando: false, tocado: false, ya: false };
     var fj = fijos(d.menores);
-    var resiOps = function (lista) { return '<option value="">Selecciona tu barrio, vereda o conjunto</option>' + (lista || []).map(function (r) { return '<option>' + esc(r) + '</option>'; }).join(''); };
     app.innerHTML =
       '<div class="card cabeza">' + (d.imagen ? '<img src="' + esc(d.imagen) + '" alt="" />' : '') +
       '<div class="in"><h1 class="h1">' + esc(d.nombre) + '</h1>' +
@@ -225,7 +228,11 @@
       '<div class="campo" data-fijo="documento"><label for="f_doc">' + esc(fj[0].t) + ' <span class="req">*</span></label><input class="input" id="f_doc" inputmode="numeric" maxlength="10" placeholder="' + esc(fj[0].d) + '" /><div id="ya-aviso"></div><div class="err"></div></div>' +
       '<div class="campo" data-fijo="nombre"><label for="f_nom">' + esc(fj[1].t) + ' <span class="req">*</span></label><input class="input" id="f_nom" maxlength="120" autocapitalize="characters" placeholder="' + esc(fj[1].d) + '" /><div class="err"></div></div>' +
       '<div class="campo" data-fijo="whatsapp"><label for="f_wa">' + esc(fj[2].t) + ' <span class="req">*</span></label><input class="input" id="f_wa" inputmode="numeric" maxlength="10" placeholder="' + esc(fj[2].d) + '" /><div class="err"></div></div>' +
-      '<div class="campo" data-fijo="residencia"><label for="f_res">' + esc(fj[3].t) + ' <span class="req">*</span></label><select class="input" id="f_res">' + resiOps(RESI) + '</select><div class="err"></div></div>' +
+      (d.vf ? '<div class="campo" data-fijo="vf"><span class="et">¿Vives en ' + esc(M.MUNICIPIO || 'Flandes') + '? <span class="req">*</span></span>' +
+        '<div class="ops sino"><label class="op"><input type="radio" name="f_vf" value="SI" /><span>Sí</span></label><label class="op"><input type="radio" name="f_vf" value="NO" /><span>No</span></label></div><div class="err"></div></div>' : '') +
+      '<div class="campo" data-fijo="residencia"' + (d.vf ? ' hidden' : '') + '><label for="f_resq">' + esc(fj[3].t) + ' <span class="req">*</span></label>' +
+        '<div class="combo"><input class="input" id="f_resq" role="combobox" aria-expanded="false" aria-controls="f_resl" aria-autocomplete="list" autocomplete="off" placeholder="Escribe para buscar tu barrio, vereda o conjunto" />' +
+        '<input type="hidden" id="f_res" value="" /><ul class="combo-l" id="f_resl" role="listbox" hidden></ul></div><div class="err"></div></div>' +
       (d.campos || []).map(campoHtml).join('') +
       '<div class="trampa" aria-hidden="true"><label>Sitio web<input type="text" id="f_hp" tabindex="-1" autocomplete="off" /></label></div>' +
       '<label class="card ley"><input type="checkbox" id="f_ley" /><span>Autorizo el tratamiento de mis datos personales' + (d.menores ? ' y los del(la) menor' : '') + ' conforme a la Ley 1581 de 2012, para gestionar esta inscripción y contactarme sobre ella. <span class="req">*</span></span></label>' +
@@ -233,14 +240,18 @@
       '<button type="submit" class="btn btn-p btn-b" id="f_btn">Inscribirme</button>' +
       '</form><p class="pie"><a href="#mis">Mis inscripciones</a> · ' + esc(M.CANDIDATO || '') + '</p>';
 
-    if (!RESI) residencias().then(function (r) { var s = $('#f_res'); if (s && !s.value) s.innerHTML = resiOps(r); });
-    else residencias();   // revalida de fondo para la próxima vez
+    residencias();        // si no estaba guardada llega de fondo; si estaba, se revalida para la próxima vez
+    comboResi();
 
     var frm = $('#frm');
     ['#f_doc', '#f_wa'].forEach(function (s) { $(s).addEventListener('input', function (e) { e.target.value = soloDig(e.target.value).slice(0, 10); }); });
     $('#f_nom').addEventListener('input', function (e) { var p = e.target.selectionStart; e.target.value = e.target.value.toUpperCase(); try { e.target.setSelectionRange(p, p); } catch (x) {} });
     frm.addEventListener('input', function (e) { F.tocado = true; limpiarErr(e.target); condiciones(); });
-    frm.addEventListener('change', function (e) { F.tocado = true; limpiarErr(e.target); condiciones(); });
+    frm.addEventListener('change', function (e) {
+      F.tocado = true; limpiarErr(e.target);
+      if (e.target.name === 'f_vf') { var rc = $('[data-fijo="residencia"]', frm); rc.hidden = e.target.value !== 'SI'; if (!rc.hidden) setTimeout(function () { $('#f_resq').focus(); }, 30); }
+      condiciones();
+    });
     $('#f_doc').addEventListener('blur', revisarYa);
     $$('.fechabtn', frm).forEach(function (b) {
       var c = campoDe(b.id.slice(2));
@@ -260,6 +271,45 @@
     cupoVivo(d);
   }
   function campoDe(id) { return (F.def.campos || []).filter(function (c) { return c.id === id; })[0]; }
+
+  /* Residencia con buscador: se escribe y se filtra la lista (sin tildes ni
+     mayúsculas). Solo vale lo que está en la lista: el valor real va en
+     #f_res y se llena al elegir (o al escribir el nombre exacto). */
+  function sinTilde(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function comboResi() {
+    var q = $('#f_resq'), val = $('#f_res'), ul = $('#f_resl'); if (!q) return;
+    var act = -1, vis = [];
+    var cerrar = function () { ul.hidden = true; q.setAttribute('aria-expanded', 'false'); act = -1; };
+    var elegir = function (t) { val.value = t; q.value = t; cerrar(); limpiarErr(q); F.tocado = true; };
+    var pintar = function () {
+      var lista = RESI || [], k = sinTilde(q.value);
+      vis = (k ? lista.filter(function (r) { return sinTilde(r).indexOf(k) >= 0; }) : lista).slice(0, 60);
+      if (k) vis.sort(function (a, b) { return (sinTilde(a).indexOf(k) === 0 ? 0 : 1) - (sinTilde(b).indexOf(k) === 0 ? 0 : 1); });
+      act = vis.length ? 0 : -1;
+      ul.innerHTML = vis.length ? vis.map(function (r, i) { return '<li role="option" data-i="' + i + '"' + (i === act ? ' class="act"' : '') + '>' + esc(r) + '</li>'; }).join('')
+        : '<li class="nada">' + (lista.length ? 'No aparece. Revisa cómo lo escribiste.' : 'Cargando la lista…') + '</li>';
+      ul.hidden = false; q.setAttribute('aria-expanded', 'true');
+    };
+    var marcar = function () { $$('li', ul).forEach(function (li) { li.classList.toggle('act', +li.dataset.i === act); }); var a = $('li.act', ul); if (a) a.scrollIntoView({ block: 'nearest' }); };
+    q.addEventListener('focus', pintar);
+    q.addEventListener('input', function () {
+      var k = sinTilde(q.value), exacto = (RESI || []).filter(function (r) { return sinTilde(r) === k; })[0];
+      val.value = exacto || '';
+      pintar();
+    });
+    q.addEventListener('keydown', function (e) {
+      if (ul.hidden) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); act = Math.min(act + 1, vis.length - 1); marcar(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); act = Math.max(act - 1, 0); marcar(); }
+      else if (e.key === 'Enter') { if (act >= 0 && vis[act]) { e.preventDefault(); elegir(vis[act]); } }
+      else if (e.key === 'Escape') cerrar();
+    });
+    /* pointerdown (no click): elige antes de que el blur cierre la lista */
+    ul.addEventListener('pointerdown', function (e) { var li = e.target.closest('li[data-i]'); if (!li) return; e.preventDefault(); elegir(vis[+li.dataset.i]); });
+    q.addEventListener('blur', function () { setTimeout(cerrar, 120); });
+    /* Si la lista llega después de pintar (primera vez), se refresca sola */
+    if (!RESI) residencias().then(function () { if (document.activeElement === q) pintar(); });
+  }
   function limpiarErr(el) { var c = el && el.closest && el.closest('.campo'); if (c) { c.classList.remove('mal'); var e = $('.err', c); if (e) e.textContent = ''; } var g = $('#f_err'); if (g) g.innerHTML = ''; }
   function marcarErr(cont, msg) { if (!cont) return; cont.classList.add('mal'); var e = $('.err', cont); if (e) e.textContent = msg; }
 
@@ -378,11 +428,14 @@
   function leer() {
     var vis = condiciones(), frm = $('#frm'), resp = {}, arch = {}, errs = [];
     var doc = soloDig($('#f_doc').value), nom = $('#f_nom').value.replace(/\s+/g, ' ').trim().toUpperCase(), wa = soloDig($('#f_wa').value), res = $('#f_res').value;
+    var vfEl = $('[name="f_vf"]:checked', frm), vf = F.def.vf ? (vfEl ? vfEl.value : '') : '';
+    if (vf === 'NO') res = '';
     var fc = function (k) { return $('[data-fijo="' + k + '"]', frm); };
     if (!/^\d{5,10}$/.test(doc)) errs.push([fc('documento'), 'El documento debe tener de 5 a 10 dígitos.']);
     if (nom.split(' ').length < 2) errs.push([fc('nombre'), 'Escribe el nombre completo (nombre y apellido).']);
     if (!/^3\d{9}$/.test(wa)) errs.push([fc('whatsapp'), 'Escribe un celular de 10 dígitos que empiece por 3.']);
-    if (!res) errs.push([fc('residencia'), 'Elige tu barrio, vereda o conjunto.']);
+    if (F.def.vf && !vf) errs.push([fc('vf'), 'Cuéntanos si vives en ' + (M.MUNICIPIO || 'Flandes') + '.']);
+    else if (vf !== 'NO' && !res) errs.push([fc('residencia'), $('#f_resq').value.trim() ? 'Elige tu barrio, vereda o conjunto de la lista.' : 'Escribe y elige tu barrio, vereda o conjunto.']);
     (F.def.campos || []).forEach(function (c) {
       if (!vis[c.id]) return;
       var cont = $('[data-campo="' + CSS.escape(c.id) + '"]', frm), el = $('#c_' + c.id, frm), v;
@@ -416,7 +469,7 @@
       }
     });
     if (!$('#f_ley').checked) errs.push([$('.ley', frm), 'Debes autorizar el tratamiento de datos para inscribirte.']);
-    return { errs: errs, cuerpo: { id: F.def.id, documento: doc, nombre: nom, whatsapp: wa, residencia: res, respuestas: resp, archivos: arch, autoriza: $('#f_ley').checked, hp: $('#f_hp').value, disp: DISP } };
+    return { errs: errs, cuerpo: { id: F.def.id, documento: doc, nombre: nom, whatsapp: wa, residencia: res, vf: vf || undefined, respuestas: resp, archivos: arch, autoriza: $('#f_ley').checked, hp: $('#f_hp').value, disp: DISP } };
   }
   function errGeneral(msg) { var g = $('#f_err'); if (g) g.innerHTML = '<div class="aviso mal">' + I.info + '<div>' + esc(msg) + '</div></div>'; }
   async function enviar() {
