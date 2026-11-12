@@ -11,6 +11,10 @@
  *     de Firebase (/publico, lectura pública, ~150 ms) y quedan guardadas en el
  *     teléfono: la segunda apertura pinta al instante. Respaldo: pub.formDef.
  *   · El cupo restante llega EN VIVO (EventSource a /meta/form_n/<id>).
+ *   · 12/11/2026: SIN lista de espera. Cupo lleno = «Cupos completos», el
+ *     botón se apaga y el servidor tampoco recibe más. Si en PRIV suben el
+ *     cupo o cambian el cierre (Ajustar), la definición se vuelve a leer de
+ *     Firebase al llenarse y la página se abre sola de nuevo.
  *   · Fotos y archivos suben DE FONDO apenas se eligen (las fotos se comprimen
  *     en el teléfono); al inscribirse solo viaja el ID del archivo.
  *   · Inscribirse: botón ocupado + escudo desde el primer toque y un rid que
@@ -337,13 +341,14 @@
     var pintar = function (n) {
       var box = $('#cupo'); if (!box) return;
       var cierre = d.cierre ? '<span>Cierra el <b>' + esc(fechaCorta(d.cierre)) + '</b></span>' : '';
-      if (!d.cupo) { box.innerHTML = cierre; return; }
+      if (!d.cupo) { box.innerHTML = cierre; F.lleno = false; botonCupo(); return; }
       var quedan = Math.max(0, d.cupo - (n || 0));
       var pct = Math.min(100, Math.round((n || 0) * 100 / d.cupo));
       box.innerHTML = '<span class="vivo">EN VIVO</span>' + (quedan ? '<span>Quedan <b>' + quedan.toLocaleString('es-CO') + '</b> de ' + Number(d.cupo).toLocaleString('es-CO') + ' cupos</span>' :
-        '<span><b>Cupo lleno.</b> Si te inscribes quedas en lista de espera.</span>') + cierre + '<div class="barra"><i style="width:' + pct + '%"></i></div>';
-      F.lleno = !quedan;
-      var b = $('#f_btn'); if (b && !F.enviando) b.textContent = quedan ? 'Inscribirme' : 'Inscribirme en lista de espera';
+        '<span><b>Cupos completos.</b> Este formulario ya no recibe más inscripciones.</span>') + cierre + '<div class="barra"><i style="width:' + pct + '%"></i></div>';
+      F.lleno = !quedan; F.nVivo = n || 0;
+      botonCupo();
+      if (!quedan) refrescarDef(d);
     };
     if (!d.cupo || !FB) { pintar(0); return; }
     pintar(lsGet('n:' + d.id, 0));
@@ -357,6 +362,30 @@
       } catch (e) {}
     }
     fb('meta/form_n/' + d.id).then(function (n) { pintar(+n || 0); }).catch(function () {});
+  }
+
+  function botonCupo() {
+    var b = $('#f_btn'); if (!b || F.enviando) return;
+    b.textContent = F.lleno ? 'Cupos completos' : 'Inscribirme';
+    b.disabled = !!F.lleno;
+  }
+  /* Lleno: ¿subieron el cupo en PRIV? Se relee la definición (Firebase, sin
+     datos de nadie) como máximo una vez cada 20 s. */
+  var defUlt = 0;
+  function refrescarDef(d) {
+    if (!FB || Date.now() - defUlt < 20000) return;
+    defUlt = Date.now();
+    fb('publico/formularios/' + d.slug).then(function (nd) {
+      if (!nd || !F.def || F.def.id !== d.id) return;
+      if (+nd.cupo !== +d.cupo || nd.cierre !== d.cierre) {
+        d.cupo = nd.cupo; d.cierre = nd.cierre; d.cierreMs = nd.cierreMs; d.varios = nd.varios;
+        var quedan = !d.cupo || d.cupo > (F.nVivo || 0);
+        F.lleno = !quedan;
+        if (VIVO) { try { VIVO.close(); } catch (e) {} VIVO = null; }
+        cupoVivo(d);
+        if (quedan) { var g = $('#f_err'); if (g) g.innerHTML = ''; }
+      }
+    }).catch(function () {});
   }
 
   /* ¿Ya inscrito? (solo avisa; NUNCA llena nombre ni WhatsApp) */
@@ -477,7 +506,8 @@
     var btn = $('#f_btn');
     F.enviando = true; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Enviando…';
     var t0 = performance.now(), g = GEN, def = F.def;
-    var listo = function () { F.enviando = false; if (btn.isConnected) { btn.disabled = false; btn.textContent = F.lleno ? 'Inscribirme en lista de espera' : 'Inscribirme'; } };
+    var listo = function () { F.enviando = false; if (btn.isConnected) { btn.disabled = !!F.lleno; btn.textContent = F.lleno ? 'Cupos completos' : 'Inscribirme'; } };
+    if (F.lleno) { F.enviando = false; btn.disabled = true; btn.textContent = 'Cupos completos'; errGeneral('Se completaron los cupos de este formulario.'); return; }
     try {
       /* Si hay archivos subiendo, se esperan (no se reenvían) */
       var pend = Object.keys(F.subiendo).map(function (k) { return F.subiendo[k].p; });
@@ -502,6 +532,7 @@
     } catch (e) {
       if (e && e.servidor) F.rid = null;          // el servidor contestó: nada quedó escrito
       if (g !== GEN) return;
+      if (e && e.respuesta && e.respuesta.lleno) { F.lleno = true; defUlt = 0; refrescarDef(def); }
       if (e && e.respuesta && e.respuesta.ya) {
         $('#ya-aviso').innerHTML = '<div class="aviso warn" style="margin-top:4px">' + I.info + '<div><b>Ya estás inscrito</b> en este formulario. Busca tu comprobante en <a href="#mis">Mis inscripciones</a>.</div></div>';
         marcarErr($('[data-fijo="documento"]'), '');
