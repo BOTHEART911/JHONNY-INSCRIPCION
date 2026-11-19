@@ -3,16 +3,24 @@
    Colores por tokens: el modo oscuro solo cambia los tokens.
    ============================================================ */
 :root {
-  --brand: #007BFF; --brand-700: #0056B3; --brand-900: #0A2540; --brand-050: #E7F1FF;
-  --brand-rgb: 0,123,255;
-  --bg: #F5F8FC; --surface: #FFFFFF; --line: #E3E9F2; --ink: #14223B; --muted: #5B6B84;
+  --brand: #0063D8;   /* Marcador 18/11/2026: azul de acción (pasa 4,5:1 con blanco). El #007BFF de la marca queda en --brand-graf */ --brand-700: #0056B3; --brand-900: #0A2540; --brand-050: #E7F1FF;
+  --brand-rgb: 0,99,216;
+  --bg: #F5F8FC; --surface: #FFFFFF; --line: #E3E9F2; --ink: #14223B; --muted: #4B5B72;
   --danger: #D64545; --ok: #1E9E6A; --warn: #B45309;
   --r-sm: 10px; --r-md: 16px; --r-lg: 22px;
   --sh-1: 0 1px 2px rgba(16,36,30,.06), 0 2px 8px rgba(16,36,30,.05);
-  --sh-2: 0 8px 24px rgba(16,36,30,.12);
+  --sh-2: 0 6px 18px rgba(10,37,64,.10);
   --font-display: 'Sora', system-ui, sans-serif;
   --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light;
+  /* ---- Marcador (DESIGN.md · JHONNY_CORE) ---- */
+  --brand-graf: #007BFF;    /* azul de la marca, solo para gráficas y fondos grandes sin texto */
+  --noche: #0A2540;         /* tinta y fondo del marcador */
+  --pendiente: #C2410C;     /* lo que falta (naranja del hashtag, versión que pasa contraste) */
+  --pendiente-050: #FFF1E6; --pendiente-700: #9A3412;
+  --firme: #15803D;         /* firme / hecho (verde del aro del logo) */
+  --firme-050: #DCFCE7;   --firme-700: #166534;
+  --salida: cubic-bezier(.2,.8,.2,1);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --bg:#0F1826; --surface:#182333; --line:#2A3A4F; --ink:#E6EDF7; --muted:#9AAAC0; --brand-050:#132A47; --brand-900:#E6EDF7; color-scheme: dark; }
@@ -29,11 +37,11 @@ a { color: var(--brand); }
 [hidden] { display: none !important; }
 
 /* ---------- Barra ---------- */
-.top { position: sticky; top: 0; z-index: 20; background: linear-gradient(135deg, var(--brand) 0%, var(--brand-700) 100%); color: #fff; padding: max(10px, env(safe-area-inset-top)) 16px 10px; box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+.top { position: sticky; top: 0; z-index: 20; background: var(--brand); color: #fff; padding: max(10px, env(safe-area-inset-top)) 16px 10px; box-shadow: 0 1px 2px rgba(10,37,64,.12); }
 .top-in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
 .top img { width: 38px; height: 38px; border-radius: 11px; background: #fff; object-fit: cover; flex: 0 0 auto; }
 .top b { font: 800 15px/1.15 var(--font-display); display: block; }
-.top span { font-size: 12px; opacity: .85; }
+.top span { font-size: 12px; }
 .top .tit { flex: 1; min-width: 0; }
 .top-btn { background: rgba(255,255,255,.16); border: 0; color: #fff; height: 38px; min-width: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; font-size: 13px; font-weight: 700; }
 .top-btn svg { width: 18px; height: 18px; }
@@ -65,6 +73,7 @@ html[data-theme="dark"] .chip, :root:not([data-theme="light"]) .chip { color: va
 .cupo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; font-size: 13.5px; color: var(--muted); }
 .cupo b { color: var(--ink); }
 .vivo { font: 800 10px/1 var(--font-display); letter-spacing: .8px; color: var(--ok); padding: 4px 7px 4px 15px; border-radius: 999px; background: rgba(30,158,106,.12); position: relative; }
+/* impeccable-disable pulsing-dot: marca EN VIVO real del formulario abierto */
 .vivo::before { content: ''; position: absolute; left: 6px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--ok); animation: late 1.4s infinite; }
 @keyframes late { 50% { opacity: .25; } }
 .barra { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; flex: 1 1 100%; }
@@ -110,8 +119,8 @@ textarea.input { resize: vertical; min-height: 96px; }
 .btn { border: 0; border-radius: 14px; padding: 14px 18px; font-weight: 800; font-size: 15.5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .1s, filter .15s; }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
-.btn-p { background: var(--brand); color: #fff; box-shadow: 0 10px 24px rgba(var(--brand-rgb), .3); }
-.btn-p:hover:not(:disabled) { filter: brightness(1.05); }
+.btn-p { background: var(--brand); color: #fff; box-shadow: none; }
+.btn-p:hover:not(:disabled) { background: var(--brand-700); }
 .btn-q { background: var(--brand-050); color: var(--brand-700); }
 .btn-wa { background: #25D366; color: #fff; }
 .btn-b { width: 100%; }
