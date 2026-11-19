@@ -43,7 +43,7 @@ a { color: var(--brand); }
 .top b { font: 800 15px/1.15 var(--font-display); display: block; }
 .top span { font-size: 12px; }
 .top .tit { flex: 1; min-width: 0; }
-.top-btn { background: rgba(255,255,255,.16); border: 0; color: #fff; height: 38px; min-width: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; font-size: 13px; font-weight: 700; }
+.top-btn { background: rgba(0,0,0,.2); border: 0; color: #fff; height: 44px; min-width: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; font-size: 13px; font-weight: 700; }
 .top-btn svg { width: 18px; height: 18px; }
 
 .wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
@@ -61,7 +61,7 @@ a { color: var(--brand); }
 .chip { align-self: flex-start; font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--brand-050); color: var(--brand-700); }
 html[data-theme="dark"] .chip, :root:not([data-theme="light"]) .chip { color: var(--brand); }
 .h1 { font: 800 22px/1.2 var(--font-display); margin: 4px 0 6px; }
-.lead { color: var(--muted); margin: 0 0 16px; font-size: 14.5px; }
+.lead { color: var(--muted); margin: 0 0 16px; font-size: 14.5px; text-wrap: pretty; }
 .vacio { text-align: center; color: var(--muted); padding: 40px 12px; display: grid; gap: 8px; justify-items: center; }
 .vacio svg { width: 54px; height: 54px; color: var(--brand); opacity: .6; }
 .skel { background: linear-gradient(90deg, var(--line), var(--surface), var(--line)); background-size: 200% 100%; animation: skel 1.2s infinite; border-radius: var(--r-md); }
